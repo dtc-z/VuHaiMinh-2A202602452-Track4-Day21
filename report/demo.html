@@ -1,0 +1,434 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0a1020">
+  <title>LiDAR × Camera Calibration QA — Day 6 Lab</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #090f1d;
+      --panel: #111b2e;
+      --panel-soft: #152239;
+      --line: #293750;
+      --ink: #f3f6fc;
+      --muted: #a8b5ca;
+      --teal: #58e1c1;
+      --orange: #ffb36b;
+      --red: #ff727c;
+      --blue: #82b8ff;
+      --radius: 20px;
+      font-family: Inter, ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      background:
+        radial-gradient(ellipse at 10% 0%, #172749 0, transparent 38rem),
+        radial-gradient(ellipse at 100% 90%, #122b33 0, transparent 34rem),
+        var(--bg);
+    }
+    button, a { font: inherit; }
+    a { color: inherit; }
+    .topbar {
+      height: 72px;
+      padding: 0 clamp(18px, 4vw, 58px);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid #ffffff12;
+      background: #090f1dcc;
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      backdrop-filter: blur(16px);
+    }
+    .brand { display: flex; align-items: center; gap: 12px; font-weight: 750; letter-spacing: .01em; }
+    .brand-mark {
+      width: 36px; height: 36px; display: grid; place-items: center;
+      border-radius: 12px; color: #06141a; background: var(--teal); font-weight: 900;
+    }
+    .top-meta { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 13px; }
+    .pill { border: 1px solid var(--line); border-radius: 999px; padding: 7px 11px; white-space: nowrap; }
+    .progress { height: 3px; background: #ffffff12; position: sticky; top: 72px; z-index: 6; }
+    .progress > span { display: block; width: 14.285%; height: 100%; background: linear-gradient(90deg, var(--teal), var(--blue)); transition: width .25s ease; }
+    main { max-width: 1420px; margin: auto; padding: clamp(18px, 3vh, 34px) clamp(18px, 4vw, 58px) 18px; }
+    .slide { display: none; min-height: min(760px, calc(100vh - 170px)); animation: enter .28s ease both; }
+    .slide.active { display: grid; }
+    @keyframes enter { from { opacity: .4; transform: translateY(7px); } to { opacity: 1; transform: translateY(0); } }
+    .eyebrow { color: var(--teal); font-size: 12px; text-transform: uppercase; font-weight: 800; letter-spacing: .14em; margin: 0 0 12px; }
+    h1, h2, h3, p { margin-top: 0; }
+    h1 { font-size: clamp(42px, 6.6vw, 82px); line-height: .99; letter-spacing: -.055em; max-width: 820px; margin-bottom: 22px; }
+    h2 { font-size: clamp(30px, 4vw, 48px); line-height: 1.05; letter-spacing: -.04em; margin-bottom: 14px; }
+    h3 { font-size: 17px; margin-bottom: 9px; }
+    p { color: var(--muted); line-height: 1.62; }
+    .lead { max-width: 700px; font-size: clamp(16px, 1.6vw, 20px); }
+    .hero { grid-template-columns: 1.06fr .94fr; align-items: center; gap: clamp(24px, 5vw, 72px); }
+    .hero-visual { position: relative; }
+    .hero-visual img { width: 100%; max-height: 480px; object-fit: contain; border-radius: var(--radius); background: #050912; border: 1px solid var(--line); }
+    .caption { font-size: 12px; color: var(--muted); margin-top: 9px; }
+    .metric-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 28px 0 22px; }
+    .metric { padding: 17px 18px; border-radius: 16px; border: 1px solid var(--line); background: linear-gradient(145deg, #15233a, #0f192a); }
+    .metric strong { display: block; font-size: clamp(25px, 3vw, 36px); letter-spacing: -.04em; color: var(--orange); }
+    .metric span { color: var(--muted); font-size: 13px; }
+    .student { display: flex; align-items: center; flex-wrap: wrap; gap: 9px; color: var(--muted); font-size: 13px; }
+    .student b { color: var(--ink); }
+    .split { grid-template-columns: 1fr 1fr; align-items: center; gap: clamp(20px, 4vw, 54px); }
+    .process { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin: 24px 0; }
+    .step, .card { border: 1px solid var(--line); border-radius: var(--radius); background: linear-gradient(155deg, #142139eF, #0f192a); padding: 18px; }
+    .step-no { display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 9px; margin-bottom: 13px; color: #06141a; background: var(--teal); font-weight: 900; font-size: 13px; }
+    .step p, .card p { margin: 0; font-size: 13px; }
+    .formula { border-left: 3px solid var(--teal); padding: 12px 15px; background: #58e1c10b; border-radius: 0 12px 12px 0; color: var(--muted); font-size: 14px; line-height: 1.55; }
+    .formula code, code { color: #dcf8f2; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; }
+    .photo-frame { display: block; padding: 9px; border: 1px solid var(--line); border-radius: var(--radius); background: #070c16; }
+    .photo-frame img { display: block; width: 100%; max-height: 510px; object-fit: contain; border-radius: 13px; }
+    .results { grid-template-rows: auto 1fr; gap: 20px; }
+    .results-body { display: grid; grid-template-columns: 1.25fr .75fr; gap: 20px; align-items: stretch; }
+    .chart { padding: 12px; border: 1px solid var(--line); border-radius: var(--radius); background: #fff; display: grid; place-items: center; min-height: 340px; }
+    .chart img { width: 100%; max-height: 445px; object-fit: contain; }
+    .data-card { border: 1px solid var(--line); border-radius: var(--radius); background: #111b2e; padding: 19px; }
+    .data-card table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th { text-align: left; color: var(--muted); font-size: 12px; font-weight: 650; padding: 11px 7px; border-bottom: 1px solid var(--line); }
+    td { padding: 13px 7px; border-bottom: 1px solid #ffffff10; font-variant-numeric: tabular-nums; }
+    tr:last-child td { border-bottom: 0; }
+    td.num { text-align: right; font-weight: 720; }
+    .hot { color: var(--orange); }
+    .teal { color: var(--teal); }
+    .note { font-size: 12px; color: var(--muted); line-height: 1.55; margin: 13px 0 0; }
+    .failure { grid-template-columns: 1.1fr .9fr; align-items: center; gap: clamp(20px, 4vw, 54px); }
+    .failure .photo-frame { border-color: #ff727c66; box-shadow: 0 0 48px #ff727c12; }
+    .failure .photo-frame img { max-height: 550px; }
+    .failure-callout { border: 1px solid #ff727c55; border-radius: 18px; padding: 19px; background: #ff727c0c; margin: 20px 0; }
+    .failure-callout strong { color: var(--red); font-size: 28px; display: block; }
+    .tag-row { display: flex; gap: 8px; flex-wrap: wrap; margin: 16px 0; }
+    .tag { border-radius: 999px; padding: 7px 10px; font-size: 12px; border: 1px solid var(--line); color: var(--muted); }
+    .tag.good { color: var(--teal); border-color: #58e1c144; }
+    .bonus { grid-template-rows: auto 1fr; gap: 16px; }
+    .bonus-grid { display: grid; grid-template-columns: 1.1fr .9fr; gap: 16px; }
+    .bonus-charts { display: grid; grid-template-rows: 1fr auto; gap: 12px; }
+    .bonus-charts .chart { min-height: 280px; }
+    .bonus-charts .chart img { max-height: 350px; }
+    .small-metrics { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+    .small-metrics .metric { padding: 13px 14px; margin: 0; }
+    .small-metrics .metric strong { font-size: 21px; }
+    .small-metrics .metric span { font-size: 11px; }
+    .latency table { margin-top: 12px; }
+    .hardware { font-size: 12px; color: var(--muted); line-height: 1.6; border-top: 1px solid var(--line); margin-top: 13px; padding-top: 13px; }
+    .compare { grid-template-rows: auto 1fr; gap: 16px; }
+    .compare-body { display: grid; grid-template-columns: 1.1fr .9fr; gap: 16px; align-items: stretch; }
+    .compare .chart { min-height: 350px; }
+    .compare .chart img { max-height: 420px; }
+    .compare-table { display: flex; flex-direction: column; gap: 12px; }
+    .compare-table table { font-size: 12px; }
+    .compare-table th, .compare-table td { padding: 10px 5px; }
+    .explain { border: 1px solid #82b8ff44; background: #82b8ff0b; border-radius: 15px; padding: 14px; color: var(--muted); font-size: 12px; line-height: 1.55; }
+    .closing { grid-template-columns: 1fr 1fr; gap: 18px; align-items: stretch; }
+    .closing .card { padding: clamp(19px, 3vw, 29px); }
+    .recommend { border-color: #58e1c144; }
+    .recommend .big-threshold { font-size: clamp(34px, 4vw, 52px); color: var(--teal); font-weight: 850; letter-spacing: -.04em; }
+    .commands { position: relative; background: #070c16; border: 1px solid var(--line); border-radius: 14px; padding: 15px; margin-top: 13px; }
+    .commands pre { white-space: pre-wrap; overflow-wrap: anywhere; color: #dbe8f8; font: 12px/1.7 ui-monospace, SFMono-Regular, Consolas, monospace; margin: 0; padding-right: 50px; }
+    .copy-btn, .nav-btn, .full-btn {
+      border: 1px solid var(--line); border-radius: 11px; background: #152239; color: var(--ink);
+      padding: 9px 13px; cursor: pointer; transition: .16s ease;
+    }
+    .copy-btn:hover, .nav-btn:hover, .full-btn:hover { border-color: var(--teal); transform: translateY(-1px); }
+    .copy-btn { position: absolute; top: 9px; right: 9px; padding: 6px 8px; font-size: 11px; }
+    details { margin-top: 14px; border-top: 1px solid var(--line); padding-top: 12px; }
+    summary { color: var(--teal); cursor: pointer; font-weight: 700; font-size: 13px; }
+    details p { font-size: 13px; }
+    .deck-controls {
+      max-width: 1420px; margin: 0 auto; padding: 8px clamp(18px, 4vw, 58px) 20px;
+      display: flex; align-items: center; justify-content: space-between; gap: 12px; color: var(--muted); font-size: 13px;
+    }
+    .control-group { display: flex; align-items: center; gap: 9px; }
+    .dots { display: flex; gap: 6px; }
+    .dot { width: 8px; height: 8px; padding: 0; border: 0; border-radius: 99px; background: #58677e; cursor: pointer; }
+    .dot.active { width: 23px; background: var(--teal); }
+    .footnote { text-align: center; color: #7d8ca3; font-size: 11px; padding: 0 18px 16px; }
+    @media (max-width: 900px) {
+      .hero, .split, .failure, .results-body, .bonus-grid, .compare-body, .closing { grid-template-columns: 1fr; }
+      .slide { min-height: auto; }
+      .hero-visual img, .photo-frame img { max-height: 430px; }
+      .results-body { gap: 12px; }
+      .bonus-charts { grid-template-rows: auto auto; }
+    }
+    @media (max-width: 560px) {
+      .topbar { height: 60px; padding-inline: 14px; }
+      .progress { top: 60px; }
+      .brand { font-size: 13px; gap: 8px; }
+      .brand-mark { width: 30px; height: 30px; }
+      .top-meta .pill:first-child { display: none; }
+      main { padding: 24px 15px 10px; }
+      .process, .metric-row, .small-metrics { grid-template-columns: 1fr 1fr; }
+      .deck-controls { padding-inline: 15px; }
+      .dot { width: 6px; height: 6px; }
+      .dot.active { width: 15px; }
+      .nav-btn { padding: 8px 10px; }
+      .full-btn { display: none; }
+      th, td { font-size: 11px; padding-inline: 4px; }
+    }
+    @media print {
+      .topbar, .progress, .deck-controls, .footnote { display: none !important; }
+      main { padding: 0; max-width: none; }
+      .slide, .slide.active { display: grid !important; min-height: 95vh; page-break-after: always; padding: 25px; }
+      body { background: #090f1d !important; print-color-adjust: exact; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><span class="brand-mark">L·C</span><span>Calibration QA Lab</span></div>
+    <div class="top-meta"><span class="pill">Day 6 · Topic A</span><span class="pill">Vũ Hải Minh · AI20K-T4</span></div>
+  </header>
+  <div class="progress" aria-label="Tiến độ trình bày"><span id="progressFill"></span></div>
+
+  <main id="deck">
+    <section class="slide hero active" aria-label="Mở đầu">
+      <div>
+        <p class="eyebrow">LiDAR × Camera · Calibration QA</p>
+        <h1>Một độ yaw làm lệch phép chiếu bao nhiêu?</h1>
+        <p class="lead">Trên KITTI, cùng một sai lệch calibration ảnh hưởng rất khác nhau tùy cảnh: frame nhiều pedestrian mất hơn 22 điểm phần trăm ở yaw 1°, trong khi frame đông xe giảm chưa đến 1 điểm.</p>
+        <div class="metric-row">
+          <div class="metric"><strong>−22.01 pp</strong><span>Frame 000011 · yaw 0° → 1°</span></div>
+          <div class="metric"><strong>−0.88 pp</strong><span>Frame 000008 · yaw 0° → 1°</span></div>
+        </div>
+        <div class="student"><b>Vũ Hải Minh</b><span>·</span><span>2A202602452</span><span>·</span><span>Dataset KITTI + nuScenes</span></div>
+      </div>
+      <div class="hero-visual">
+        <a href="../results/figures/overlay_000011_r0.0_p0.0_y0.0_t0.0_0.0_0.0.png" target="_blank" rel="noreferrer">
+          <img src="../results/figures/overlay_000011_r0.0_p0.0_y0.0_t0.0_0.0_0.0.png" alt="LiDAR chiếu lên ảnh KITTI frame 000011 với calibration gốc">
+        </a>
+        <div class="caption">Frame 000011 · phép chiếu với calibration gốc (yaw 0°). Bấm ảnh để mở kích thước đầy đủ.</div>
+      </div>
+    </section>
+
+    <section class="slide split" aria-label="Thiết kế thí nghiệm">
+      <div>
+        <p class="eyebrow">01 · Quy trình</p>
+        <h2>Giữ nguyên dữ liệu, thay đổi yaw</h2>
+        <p>Thí nghiệm dùng cùng point cloud, ảnh, nhãn và pipeline chiếu. Chỉ extrinsic yaw thay đổi; chạy trên ba frame KITTI có mật độ và lớp vật thể khác nhau.</p>
+        <div class="process">
+          <div class="step"><span class="step-no">1</span><h3>Đọc & chiếu</h3><p>Đọc LiDAR, calibration và 2D labels; kiểm tra overlay ở yaw 0°.</p></div>
+          <div class="step"><span class="step-no">2</span><h3>Gây lệch</h3><p>Thử yaw 0°, 1° và 2° trên cùng các frame.</p></div>
+          <div class="step"><span class="step-no">3</span><h3>Đếm điểm</h3><p>Đo điểm từ 3D box nằm trong ảnh và 2D box.</p></div>
+          <div class="step"><span class="step-no">4</span><h3>Phân tích</h3><p>So sánh theo frame, class, khoảng cách và dataset.</p></div>
+        </div>
+        <div class="formula"><b>Metric:</b> <code>visible_hit_ratio</code> chia số điểm trúng 2D box cho số điểm vật thể còn nhìn thấy trong ảnh. Biểu đồ CP3 mặc định dùng <code>hit_ratio</code> với mẫu số cố định theo calibration gốc.</div>
+      </div>
+      <div>
+        <div class="photo-frame"><img src="../results/figures/overlay_000011_r0.0_p0.0_y0.0_t0.0_0.0_0.0.png" alt="Overlay calibration gốc cho frame nhiều pedestrian"></div>
+        <p class="caption">Các frame CP3: 000008 (đông xe), 000011 (nhiều pedestrian), 000049 (nhiều vật thể bị che).</p>
+        <div class="tag-row"><span class="tag good">Input cố định</span><span class="tag">Yaw: 0° · 1° · 2°</span><span class="tag">KITTI mini</span></div>
+      </div>
+    </section>
+
+    <section class="slide results" aria-label="Kết quả CP3">
+      <div>
+        <p class="eyebrow">02 · CP3 · Kết quả chính</p>
+        <h2>Độ nhạy phụ thuộc vào cảnh</h2>
+        <p>Frame 000011 giảm mạnh ngay ở yaw 1°; frame 000008 gần như giữ nguyên. Sai lệch nhỏ không tạo ra một mức ảnh hưởng đồng đều.</p>
+      </div>
+      <div class="results-body">
+        <a class="chart" href="../results/figures/yaw_sweep.png" target="_blank" rel="noreferrer" aria-label="Mở biểu đồ yaw sweep">
+          <img src="../results/figures/yaw_sweep.png" alt="Biểu đồ hit ratio theo yaw trên ba frame KITTI">
+        </a>
+        <div class="data-card">
+          <h3>visible_hit_ratio</h3>
+          <table>
+            <thead><tr><th>Frame</th><th class="num">0°</th><th class="num">1°</th><th class="num">2°</th></tr></thead>
+            <tbody>
+              <tr><td>000008 · xe</td><td class="num">99.63%</td><td class="num">98.75%</td><td class="num">94.88%</td></tr>
+              <tr><td>000011 · người</td><td class="num">99.45%</td><td class="num hot">77.44%</td><td class="num hot">45.44%</td></tr>
+              <tr><td>000049 · che khuất</td><td class="num">99.25%</td><td class="num">93.54%</td><td class="num">84.73%</td></tr>
+            </tbody>
+          </table>
+          <p class="note">Input mỗi frame: 122,555 / 108,004 / 113,691 điểm. Biểu đồ dùng hit_ratio với mẫu số cố định; bảng dùng visible_hit_ratio nên loại điểm bị đẩy ra ngoài ảnh khỏi mẫu số.</p>
+          <a class="tag" href="../results/yaw_perturb_sweep.csv">Mở CSV CP3 ↗</a>
+          <a class="tag" href="../results/figures/yaw_breakdown.png" target="_blank" rel="noreferrer">Breakdown class/khoảng cách ↗</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide failure" aria-label="Failure case CP4">
+      <div>
+        <p class="eyebrow">03 · CP4 · Failure case</p>
+        <h2>Pedestrian biến mất khỏi vùng chiếu</h2>
+        <p>Ở frame 000011 với extrinsic yaw lệch 2°, pedestrian được chọn không còn điểm nào nằm trong 2D box. Trong khi đó point cloud và ảnh đầu vào vẫn giữ nguyên.</p>
+        <div class="failure-callout"><strong>0.0%</strong><span>hit ratio của pedestrian được chọn trong failure image</span></div>
+        <div class="tag-row"><span class="tag" style="color:var(--red);border-color:#ff727c66">Lớp lỗi: Geometry</span><span class="tag">Yaw extrinsic sai 2°</span><span class="tag">Frame 000011</span></div>
+        <p class="note">Chẩn đoán: điểm của vật thể hẹp bị dịch khỏi label 2D. Tỷ lệ gộp toàn frame ở yaw 2° vẫn là 45.44%, vì metric tổng hợp nhiều vật thể.</p>
+      </div>
+      <div>
+        <a class="photo-frame" href="../results/figures/fail_01_yaw2_frame000011.png" target="_blank" rel="noreferrer">
+          <img src="../results/figures/fail_01_yaw2_frame000011.png" alt="Failure case yaw 2 độ ở frame 000011, pedestrian có tỷ lệ hit 0 phần trăm">
+        </a>
+        <p class="caption">Failure image: <code>fail_01_yaw2_frame000011.png</code></p>
+      </div>
+    </section>
+
+    <section class="slide bonus" aria-label="Bonus B2 và B3">
+      <div>
+        <p class="eyebrow">04 · Bonus B2 + B3</p>
+        <h2>Đo độ bền dữ liệu và chi phí chạy</h2>
+      </div>
+      <div class="bonus-grid">
+        <div class="bonus-charts">
+          <a class="chart" href="../results/figures/degradation_sweep.png" target="_blank" rel="noreferrer">
+            <img src="../results/figures/degradation_sweep.png" alt="Kết quả dropout và Gaussian noise trên point cloud">
+          </a>
+          <div class="small-metrics">
+            <div class="metric"><strong>725 → 350</strong><span>B2 · frame 000011 · dropout 50%</span></div>
+            <div class="metric"><strong>725 → 624</strong><span>B2 · noise σ: 0 → 0.1 m</span></div>
+          </div>
+        </div>
+        <div class="data-card latency">
+          <span class="tag good">B3 · 20 lượt/frame, bỏ warm-up</span>
+          <h3 style="margin-top:14px">Latency pipeline QA</h3>
+          <table>
+            <thead><tr><th>Frame</th><th class="num">p50</th><th class="num">p95</th></tr></thead>
+            <tbody>
+              <tr><td>000008</td><td class="num">47.74 ms</td><td class="num">52.07 ms</td></tr>
+              <tr><td>000011</td><td class="num">42.01 ms</td><td class="num">44.62 ms</td></tr>
+              <tr><td>000049</td><td class="num">86.55 ms</td><td class="num">94.39 ms</td></tr>
+            </tbody>
+          </table>
+          <div class="hardware"><b>Máy đo:</b> Intel Core i5-12500H · 16 logical CPUs · 15.7 GiB RAM · RTX 3050 Laptop + Intel Iris Xe. Pipeline benchmark dùng CPU.</div>
+          <p class="note">Dropout 50% gần như giữ hit ratio nhưng làm mật độ điểm giảm một nửa; nên theo dõi cả độ phủ lẫn số điểm.</p>
+          <a class="tag" href="../results/degradation_sweep.csv">CSV degradation ↗</a>
+          <a class="tag" href="../results/projection_latency.csv">CSV latency ↗</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide compare" aria-label="Bonus B5 và B4">
+      <div>
+        <p class="eyebrow">05 · Bonus B5 + B4</p>
+        <h2>Cùng phép thử, hai dataset thật</h2>
+        <p>Ở yaw 2°, pedestrian nuScenes còn 41.30% so với 58.24% trên KITTI trong các frame đã chọn.</p>
+      </div>
+      <div class="compare-body">
+        <a class="chart" href="../results/figures/yaw_dataset_compare.png" target="_blank" rel="noreferrer">
+          <img src="../results/figures/yaw_dataset_compare.png" alt="So sánh độ nhạy yaw giữa KITTI và nuScenes cho car và pedestrian">
+        </a>
+        <div class="compare-table">
+          <div class="data-card">
+            <h3>visible_hit_ratio · yaw 2°</h3>
+            <table>
+              <thead><tr><th>Dataset / class</th><th class="num">Điểm ở 0°</th><th class="num">Tỷ lệ</th></tr></thead>
+              <tbody>
+                <tr><td>KITTI · Car</td><td class="num">9,001</td><td class="num">91.36%</td></tr>
+                <tr><td>KITTI · Ped.</td><td class="num">1,068</td><td class="num">58.24%</td></tr>
+                <tr><td>nuScenes · Car</td><td class="num">610</td><td class="num">91.50%</td></tr>
+                <tr><td>nuScenes · Ped.</td><td class="num">92</td><td class="num hot">41.30%</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="explain"><b>Vì sao khác?</b> KITTI mini dùng 64 beam, nuScenes 32; mật độ và số điểm trong pedestrian box khác lớn. Tiêu cự khoảng 721 px và 1,253 px tạo độ dịch yaw 1° khoảng 12.6 px và 21.9 px. nuScenes có khoảng 35 ms lệch timestamp, đã bật bù ego-motion. Khác biệt giữa scene nên không thể quy kết cho một yếu tố duy nhất.</div>
+          <div class="card">
+            <span class="tag good">B4 · Tool tái sử dụng</span>
+            <p style="margin-top:10px">Sweep có tham số, mặc định chạy được và có trợ giúp CLI.</p>
+            <div class="commands"><button class="copy-btn" onclick="copyCode(this)">Copy</button><pre>python -m src.exp_yaw_sweep --help
+python -m src.exp_yaw_sweep</pre></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide closing" aria-label="Khuyến nghị và chạy lại">
+      <div class="card recommend">
+        <p class="eyebrow">06 · Khuyến nghị thực tế</p>
+        <h2>QA theo sự kiện, ghi log theo class</h2>
+        <p>Với xe giao hàng tự hành trong đô thị, tính chỉ số khi xe dừng hoặc chạy chậm để giảm tải và hạn chế ảnh hưởng chuyển động. Dùng ngưỡng ban đầu cho pedestrian, sau đó hiệu chỉnh theo che khuất và điều kiện ngày/đêm.</p>
+        <div class="big-threshold">&lt; 90% · 5 phút</div>
+        <p class="note">Ngưỡng cảnh báo thử nghiệm. Ghi log hit ratio theo class, khoảng cách, yaw ước lượng và nhiệt độ giá đỡ cảm biến.</p>
+        <div class="tag-row"><span class="tag">p50: 42–87 ms/frame</span><span class="tag">p95: 45–94 ms/frame</span><span class="tag">CPU benchmark</span></div>
+      </div>
+      <div class="card">
+        <p class="eyebrow">Mở demo · chạy lại kết quả</p>
+        <h3>PowerShell · từ gốc repo</h3>
+        <div class="commands"><button class="copy-btn" onclick="copyCode(this)">Copy</button><pre>python -m src.test_projection
+python -m starter.projection --data-root data/kitti_mini --frame 000011
+python -m src.exp_yaw_sweep --data-root data/kitti_mini --frames 000008 000011 000049
+python -m src.plot_yaw_sweep
+python -m src.failure_yaw_demo --data-root data/kitti_mini --frame 000011 --yaw-deg 2</pre></div>
+        <p class="note">Các lệnh bonus B2, B3, B4, B5 và đường dẫn CSV đầy đủ nằm ở mục 5 của <a href="REPORT.md">REPORT.md</a>.</p>
+        <details>
+          <summary>Mở lời thoại gợi ý cho demo 3 phút</summary>
+          <p><b>0:00–0:20:</b> Tôi kiểm tra độ nhạy của phép chiếu LiDAR-camera với sai lệch yaw. Claim chính là frame nhiều pedestrian nhạy hơn frame đông xe.</p>
+          <p><b>0:20–1:20:</b> Giữ nguyên point cloud, ảnh và label; chỉ thay yaw. Ở frame 000011, visible_hit_ratio giảm từ 99.45% xuống 77.44% tại 1°; frame 000008 chỉ giảm 0.88 điểm phần trăm.</p>
+          <p><b>1:20–2:20:</b> Failure ở yaw 2° làm pedestrian được chọn còn 0% điểm trong 2D box. Đây là lỗi Geometry do extrinsic bị lệch, không phải thay đổi dữ liệu.</p>
+          <p><b>2:20–3:00:</b> Khi triển khai, chạy QA lúc xe dừng hoặc chậm; cảnh báo nếu pedestrian dưới 90% liên tục 5 phút và lưu thêm class, khoảng cách, yaw cùng nhiệt độ giá đỡ.</p>
+        </details>
+      </div>
+    </section>
+  </main>
+
+  <nav class="deck-controls" aria-label="Điều hướng slide">
+    <div class="control-group"><button class="nav-btn" id="prevBtn" aria-label="Slide trước">← Trước</button><span id="slideCount">01 / 07</span><button class="nav-btn" id="nextBtn" aria-label="Slide tiếp">Tiếp →</button></div>
+    <div class="dots" id="dots" aria-label="Chọn slide"></div>
+    <button class="full-btn" id="fullBtn">Toàn màn hình</button>
+  </nav>
+  <div class="footnote">Dùng ← / → để chuyển slide · Nhấn F để bật toàn màn hình · Bấm ảnh/biểu đồ để mở bản lớn</div>
+
+  <script>
+    (() => {
+      const slides = [...document.querySelectorAll('.slide')];
+      const dots = document.getElementById('dots');
+      const progress = document.getElementById('progressFill');
+      const count = document.getElementById('slideCount');
+      let index = 0;
+      slides.forEach((_, i) => {
+        const dot = document.createElement('button');
+        dot.className = 'dot';
+        dot.type = 'button';
+        dot.setAttribute('aria-label', `Đi tới slide ${i + 1}`);
+        dot.addEventListener('click', () => show(i));
+        dots.appendChild(dot);
+      });
+      function show(next) {
+        index = Math.max(0, Math.min(slides.length - 1, next));
+        slides.forEach((slide, i) => slide.classList.toggle('active', i === index));
+        [...dots.children].forEach((dot, i) => {
+          dot.classList.toggle('active', i === index);
+          dot.setAttribute('aria-current', i === index ? 'step' : 'false');
+        });
+        count.textContent = `${String(index + 1).padStart(2, '0')} / ${String(slides.length).padStart(2, '0')}`;
+        progress.style.width = `${((index + 1) / slides.length) * 100}%`;
+        document.getElementById('prevBtn').disabled = index === 0;
+        document.getElementById('nextBtn').disabled = index === slides.length - 1;
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+      document.getElementById('prevBtn').addEventListener('click', () => show(index - 1));
+      document.getElementById('nextBtn').addEventListener('click', () => show(index + 1));
+      document.getElementById('fullBtn').addEventListener('click', async () => {
+        if (!document.fullscreenElement) await document.documentElement.requestFullscreen?.();
+        else await document.exitFullscreen?.();
+      });
+      document.addEventListener('keydown', event => {
+        if (event.key === 'ArrowRight' || event.key === 'PageDown') show(index + 1);
+        if (event.key === 'ArrowLeft' || event.key === 'PageUp') show(index - 1);
+        if (event.key.toLowerCase() === 'f') document.getElementById('fullBtn').click();
+      });
+      window.copyCode = async button => {
+        const text = button.parentElement.querySelector('pre').innerText;
+        try {
+          await navigator.clipboard.writeText(text);
+        } catch (_) {
+          const field = document.createElement('textarea');
+          field.value = text;
+          field.style.position = 'fixed'; field.style.opacity = '0';
+          document.body.appendChild(field); field.select(); document.execCommand('copy'); field.remove();
+        }
+        const old = button.textContent;
+        button.textContent = 'Đã copy';
+        setTimeout(() => button.textContent = old, 1400);
+      };
+      show(0);
+    })();
+  </script>
+</body>
+</html>
